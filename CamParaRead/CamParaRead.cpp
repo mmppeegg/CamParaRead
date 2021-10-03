@@ -160,12 +160,12 @@ HRESULT selectDev()
 int main()
 {
     std::cout << "Start trying read my camera parameters!!\n";
-#if 1 // testing
+#if 0 // testing
     CoInitialize(nullptr);
     HRESULT hr = selectDev();
 #endif
 
-#if 0 // example from Kevin H M
+#if 0// example get/set camera settings (from Kevin H M)
      // for playing
     IGraphBuilder* pGraphBuilder;
     ICaptureGraphBuilder2* pCaptureGraphBuilder2;
@@ -218,6 +218,12 @@ int main()
         // get FriendlyName
         pPropertyBag->Read(L"FriendlyName", &varName, 0);
         std::string strFName = ConvertBSTRToMBS(varName.bstrVal);
+
+        // vv - we can take advantage of this to identify each camera if there is no serial number embedded in camera itself.
+        // MSDN: https://docs.microsoft.com/en-us/windows/win32/directshow/selecting-a-capture-device
+        // DevicePath - The "DevicePath" property is not a human-readable string, but is guaranteed to be unique 
+        // for each video capture device on the system. 
+        // You can use this property to distinguish between two or more instances of the same model of device.
 
         std::cout << strFName << "\r\n";
         VariantClear(&varName);
