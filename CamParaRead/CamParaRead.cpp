@@ -1,12 +1,26 @@
-// CamParaRead.cpp : This file contains the 'main' function. Program execution begins and ends there.
+﻿// CamParaRead.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
+
+#define MAX_STRING_SIZE 256
 
 #include <iostream>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <Windows.h>
 #include <dshow.h>
+//#include <atlconv.h>
+//#include <stdio.h>
 #include <string>
+//#include <cfgmgr32.h>
+#include <vector>
+#include <setupapi.h> 
+#include <hidsdi.h>
+#include <hidpi.h>
+#include "iSerialNum.h"
 
+#pragma warning(disable : 4996)
+//#pragma comment (lib, "cfgmgr32.lib")
 #pragma comment(lib, "strmiids.lib") 
 
 // Release the format block for a media type.
@@ -38,8 +52,6 @@ void _DeleteMediaType(AM_MEDIA_TYPE* pmt)
     }
 }
 
-
-
 std::string ConvertWCSToMBS(const wchar_t* pstr, long wslen)
 {
     int len = ::WideCharToMultiByte(CP_ACP, 0, pstr, wslen, NULL, 0, NULL, NULL);
@@ -59,6 +71,107 @@ std::string ConvertBSTRToMBS(BSTR bstr)
     return ConvertWCSToMBS((wchar_t*)bstr, wslen);
 }
 
+//-----------------------------------------------------------------------------
+void* buf_alloc(int size)
+{
+    void* buf;
+
+    if (NULL == (buf = malloc(size)))
+        std::cout << "Out of memory! \n";
+        //error_exit("out of memory");
+
+    return buf;
+}
+
+//-----------------------------------------------------------------------------
+void buf_free(void* buf)
+{
+    free(buf);
+}
+
+//int dbg_enumerate(debugger_t* debuggers, int size)
+int dbg_enumerate(int size)
+{
+    GUID hid_guid;
+    HDEVINFO hid_dev_info;
+    HIDD_ATTRIBUTES hid_attr;
+    SP_DEVICE_INTERFACE_DATA dev_info_data;
+    PSP_DEVICE_INTERFACE_DETAIL_DATA detail_data;
+    DWORD detail_size;
+    HANDLE handle;
+    int rsize = 0;
+
+//#define GUID_CAMERA_STRING L"{65e8773d-8f56-11d0-a3b9-00a0c9223196}"
+#define GUID_CAMERA_STRING1 L"{ca3e7ab9-b4c3-4ae6-8251-579ef933890f}"
+    GUID guid;
+    CLSIDFromString(GUID_CAMERA_STRING, &guid);
+
+
+
+    HidD_GetHidGuid(&hid_guid); // 這個看起來
+//#define GUID_CAMERA_ {ca3e7ab9-b4c3-4ae6-8251-579ef933890f}
+    hid_dev_info = SetupDiGetClassDevs(&hid_guid, NULL, NULL, DIGCF_PRESENT | DIGCF_INTERFACEDEVICE);
+    //hid_dev_info = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_PRESENT | DIGCF_INTERFACEDEVICE);
+
+    dev_info_data.cbSize = sizeof(dev_info_data);
+
+    for (int i = 0; i < size; i++)
+    {
+        if (FALSE == SetupDiEnumDeviceInterfaces(hid_dev_info, 0, &hid_guid, i, &dev_info_data))
+            break;
+
+        SetupDiGetDeviceInterfaceDetail(hid_dev_info, &dev_info_data, NULL, 0,
+            &detail_size, NULL);
+
+        detail_data = (PSP_DEVICE_INTERFACE_DETAIL_DATA)buf_alloc(detail_size);
+        detail_data->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+        SetupDiGetDeviceInterfaceDetail(hid_dev_info, &dev_info_data, detail_data,
+            detail_size, NULL, NULL);
+
+        handle = CreateFile(detail_data->DevicePath, GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+        if (INVALID_HANDLE_VALUE != handle)
+        {
+            hid_attr.Size = sizeof(hid_attr);
+            HidD_GetAttributes(handle, &hid_attr);
+
+            //if (DBG_VID == hid_attr.VendorID && DBG_PID == hid_attr.ProductID)
+            //if (0x047D == hid_attr.VendorID && 0x80B3 == hid_attr.ProductID) // vv20211004
+            //if (0x047D == hid_attr.VendorID && 0x8068 == hid_attr.ProductID)
+            if (0x17E9 == hid_attr.VendorID && 0x4306 == hid_attr.ProductID)
+            {
+                wchar_t wstr[MAX_STRING_SIZE];
+                char str[MAX_STRING_SIZE];
+
+                //debuggers[rsize].path = strdup(detail_data->DevicePath);
+
+                HidD_GetSerialNumberString(handle, (PVOID)wstr, MAX_STRING_SIZE);
+                wcstombs(str, wstr, MAX_STRING_SIZE);
+                //debuggers[rsize].serial = strdup(str);
+
+                HidD_GetManufacturerString(handle, (PVOID)wstr, MAX_STRING_SIZE);
+                wcstombs(str, wstr, MAX_STRING_SIZE);
+                //debuggers[rsize].manufacturer = strdup(str);
+
+                HidD_GetProductString(handle, (PVOID)wstr, MAX_STRING_SIZE);
+                wcstombs(str, wstr, MAX_STRING_SIZE);
+                //debuggers[rsize].product = strdup(str);
+
+                rsize++;
+            }
+
+            CloseHandle(handle);
+        }
+
+        buf_free(detail_data);
+    }
+
+    SetupDiDestroyDeviceInfoList(hid_dev_info);
+
+    return rsize;
+}
 
 HRESULT selectDev()
 {
@@ -160,6 +273,13 @@ HRESULT selectDev()
 int main()
 {
     std::cout << "Start trying read my camera parameters!!\n";
+
+    std::vector<int>* order = new std::vector<int>(10, -1);
+    getCameraOrderBySerialNumber(order, 1);
+
+#if 0 // get serial number test
+    dbg_enumerate(100); // 使用HidD_xxxx 無法抓到camera，因為camera沒有分類到hid裝置
+#endif
 #if 0 // testing
     CoInitialize(nullptr);
     HRESULT hr = selectDev();
