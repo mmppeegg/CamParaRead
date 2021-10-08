@@ -274,18 +274,21 @@ int main()
 {
     std::cout << "Start trying read my camera parameters!!\n";
 
+#if 1 // 
     std::vector<int>* order = new std::vector<int>(10, -1);
     getCameraOrderBySerialNumber(order, 1);
+#endif
 
 #if 0 // get serial number test
     dbg_enumerate(100); // 使用HidD_xxxx 無法抓到camera，因為camera沒有分類到hid裝置
 #endif
+
 #if 0 // testing
     CoInitialize(nullptr);
     HRESULT hr = selectDev();
 #endif
 
-#if 0// example get/set camera settings (from Kevin H M)
+#if 0// example get/set camera settings by Direct show(from Kevin H M)
      // for playing
     IGraphBuilder* pGraphBuilder;
     ICaptureGraphBuilder2* pCaptureGraphBuilder2;

@@ -35,11 +35,18 @@ static BOOL GetParentDeviceInstanceId(_Out_ PWCHAR pszParentDeviceInstanceId, _O
 	return FALSE;
 }
 
-//檢驗序列號是否合法，規則是最後四位爲"C[Version][L|R][int][int]",輸出次序值
+//檢驗序列號是否合法，規則是
 static int CheckSerialNumber(std::string serialNumber)
 {
+	int result = 1;
 	int k = (int)serialNumber.length() - 1;
 	while (serialNumber[k] != '\\') k--;
+
+	//std::string strTmp = serialNumber.substr((int)serialNumber.length() - k, (int)serialNumber.length());
+	std::string strTmp = serialNumber.substr(k + 1, (int)serialNumber.length());
+	std::cout << "      Serial number is: " << strTmp << "\r\n";
+
+#if 0 // it's not Kensington webcam's parse rule
 	if (serialNumber[k + 1] == 'C' && (serialNumber[k + 2] >= '0' && serialNumber[k + 2] <= '9') && (serialNumber[k + 3] == 'L' || serialNumber[k + 3] == 'R'))
 	{
 		int id = (serialNumber[k + 4] - '0') * 10 + (serialNumber[k + 5] - '0') * 2;
@@ -48,6 +55,8 @@ static int CheckSerialNumber(std::string serialNumber)
 	}
 	else
 		return -1;//illegal
+#endif
+	return result;
 }
 
 static int getSerialNumber(std::string childDistanceId)
@@ -72,7 +81,6 @@ static int getSerialNumber(std::string childDistanceId)
 		// Loop over devices found in SetupDiGetClassDevs
 		while (SetupDiEnumDeviceInfo(devInfo, devIndex, &devInfoData))
 		{
-
 			// Read Device Instance ID of current device
 			memset(szDeviceInstanceId, 0, MAX_DEVICE_ID_LEN);
 			SetupDiGetDeviceInstanceIdW(devInfo, &devInfoData, szDeviceInstanceId, MAX_PATH, 0);
@@ -84,12 +92,9 @@ static int getSerialNumber(std::string childDistanceId)
 			std::string strDevID(szDeviceInstId);
 
 			// 原作者使用的方式看起來不像USB的camera, 是以內建的camera為主的樣子，所以我們在解析字串的時候不能用UIDxxx來分析...
-
-
 			//if (childDistanceId.compare(szDeviceInstId) == 0)
 			if(strDevID.find(childDistanceId) != std::string::npos) // vv20210907
 			{
-
 				// Handle of current defice instance id
 				DEVINST hCurrentDeviceInstanceId = devInfoData.DevInst;
 
@@ -213,7 +218,24 @@ bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 		//"Description": A description of the device.
 		//Filter Info================
 		//修改格式使其和com產生的串格式對應
+		bool kgt_cam_found = false;
+		if (varName.bstrVal == NULL) { // Found nothing
+			//std::cout << "Not get any string!!! Next one please!! \r\n";
+			VariantClear(&varName);
+			continue;
+		}
 		std::string varNameBak = W2A(varName.bstrVal);
+#if 1
+		if (varNameBak.find("vid_047d") != std::string::npos) {
+			if (varNameBak.find("pid_80b3") != std::string::npos || // W2000
+				(varNameBak.find("pid_80b4") != std::string::npos)   // W2050
+				)
+				std::cout << "Kensington cam: " << varNameBak << "\r\n";
+				kgt_cam_found = true;
+		}
+		if (!kgt_cam_found) continue;
+#endif
+#if 1 // we're usb camera
 		while (varNameBak[0] != 'u')
 			varNameBak.erase(0, 1);//remove one char
 		int k = 0;
@@ -227,6 +249,7 @@ bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 			k++;
 		}
 		varNameBak.erase(k - 1);	//remove all char in id > k
+#endif
 		//printf("[%s]\n", W2A(varName.bstrVal));
 		//cout << varNameBak << endl;
 
@@ -261,10 +284,3 @@ bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 		return false;
 	}
 }
-
-//int main()
-//{
-//	vector<int> *order = new vector<int>(10, -1);
-//	getCameraOrderBySerialNumber(order);
-//	return 0;
-//}
