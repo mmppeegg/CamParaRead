@@ -21,9 +21,15 @@
     <ClCompile Include="iSerialNum.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AddTimeStamp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="iSerialNum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AddTimeStamp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

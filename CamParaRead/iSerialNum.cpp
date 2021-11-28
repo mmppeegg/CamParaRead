@@ -214,8 +214,6 @@ bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 		//		hr = pPropBag->Read(L"FriendlyName", &varName, 0);
 		hr = pPropBag->Read(L"DevicePath", &varName, 0);
 
-		//"FriendlyName": The name of the device.
-		//"Description": A description of the device.
 		//Filter Info================
 		//修改格式使其和com產生的串格式對應
 		bool kgt_cam_found = false;
@@ -225,7 +223,7 @@ bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 			continue;
 		}
 		std::string varNameBak = W2A(varName.bstrVal);
-#if 1
+#if 1 // Filter Kensington devices
 		if (varNameBak.find("vid_047d") != std::string::npos) {
 			if (varNameBak.find("pid_80b3") != std::string::npos || // W2000
 				(varNameBak.find("pid_80b4") != std::string::npos)   // W2050

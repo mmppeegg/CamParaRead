@@ -140,10 +140,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AddTimeStamp.cpp" />
     <ClCompile Include="CamParaRead.cpp" />
     <ClCompile Include="iSerialNum.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AddTimeStamp.h" />
     <ClInclude Include="iSerialNum.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
