@@ -20,6 +20,9 @@
 #include <atlconv.h>
 //#include "DistinguishCamera.h"
 #include <iostream>
+#include <ks.h>
+#include <Ksproxy.h>
+//#include <Softusbif.h>
 
 #pragma warning(disable : 4996)
 #define GUID_CAMERA_STRING L"{65e8773d-8f56-11d0-a3b9-00a0c9223196}"
@@ -32,3 +35,4 @@ static int CheckSerialNumber(std::string serialNumber);
 static int getSerialNumber(std::string childDistanceId);
 #endif
 bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera);
+bool getCamOccupied();

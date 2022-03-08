@@ -17,6 +17,11 @@
 #include <setupapi.h> 
 #include <hidsdi.h>
 #include <hidpi.h>
+#include <ks.h>
+#include <Ksproxy.h>
+#include <comdef.h>
+
+// my header
 #include "AddTimeStamp.h"
 #include "iSerialNum.h"
 
@@ -112,6 +117,12 @@ void myCamControl()
             // Bind Monkier to Filter
             pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&pDeviceFilter);
         }
+        //pDeviceFilter->
+
+        //IKsPropertySet  GG;
+        //GG->Get(KSPROPERTY_PIN_CINSTANCES)
+
+
 
         // release
         pMoniker->Release();
@@ -143,15 +154,16 @@ void myCamControl()
         //============================================================
         //===========  MY CODE  ======================================
         //=============================================================
-        HRESULT hr = CoInitialize(0);
+        HRESULT hr;// = CoInitialize(0);
         IAMStreamConfig* pConfig = NULL;
         hr = pCaptureGraphBuilder2->FindInterface(&PIN_CATEGORY_CAPTURE, 0, pDeviceFilter, IID_IAMStreamConfig, (void**)&pConfig);
 
+        #if 0 // 這裡可以不處理，但不處理的話畫出來的視窗會比較小，但對於控制/讀取camera是沒問題的
         int iCount = 0, iSize = 0;
         hr = pConfig->GetNumberOfCapabilities(&iCount, &iSize);
 
         // Check the size to make sure we pass in the correct structure.
-        #if 1 // 這裡可以不處理，但不處理的話畫出來的視窗會比較小，但對於控制/讀取camera是沒問題的
+        
         if (iSize == sizeof(VIDEO_STREAM_CONFIG_CAPS))
         {
             // Use the video capabilities structure.
@@ -185,7 +197,7 @@ void myCamControl()
         }
         #endif
 
-        // Query the capture filter for the IAMCameraControl interface.
+#if 0   // (works)Query the capture filter for the IAMCameraControl interface.
         IAMCameraControl* pCameraControl = 0;
         hr = pDeviceFilter->QueryInterface(IID_IAMCameraControl, (void**)&pCameraControl);
         if (FAILED(hr))
@@ -196,30 +208,31 @@ void myCamControl()
         else
         {
             long Min, Max, Step, Default, Flags, Val;
-
             // Get the range and default values 
             hr = pCameraControl->GetRange(CameraControl_Exposure, &Min, &Max, &Step, &Default, &Flags);
-            hr = pCameraControl->GetRange(CameraControl_Focus, &Min, &Max, &Step, &Default, &Flags);
-            hr = pCameraControl->GetRange(CameraControl_Iris, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pCameraControl->GetRange(CameraControl_Focus, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pCameraControl->GetRange(CameraControl_Iris, &Min, &Max, &Step, &Default, &Flags);
             // 低光補償看起來也是可以用，但應該只有default有意義(預設值為1?)
-            hr = pCameraControl->GetRange(CameraControl_LowLightCompensation, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pCameraControl->GetRange(CameraControl_LowLightCompensation, &Min, &Max, &Step, &Default, &Flags);
             if (SUCCEEDED(hr))
             {
-#if 1
+                #if 1
                 //hr = pCameraControl->Get(CameraControl_Tilt, &Val, &Flags);
                 //hr = pCameraControl->Get(CameraControl_LowLightCompensation, &Val, &Flags); // It works而且不受auto-exposure勾選的影響
-                hr = pCameraControl->Get(CameraControl_Focus, &Val, &Flags);
+                //hr = pCameraControl->Get(CameraControl_Focus, &Val, &Flags);
+                hr = pCameraControl->Get(CameraControl_Exposure, &Val, &Flags);
 
                 std::cout << "Tile value is: " << Val << " auto value: " << Flags << "\r\n";
-#endif
-#if 0 // vv20210929 here we can set camera parameter (control)
+                #endif
+                #if 0 // vv20210929 here we can set camera parameter (control)
                 hr = pCameraControl->Set(CameraControl_Exposure, -11, CameraControl_Flags_Manual); // Min = -11, Max = 1, Step = 1
                 hr = pCameraControl->Set(CameraControl_Focus, 10, CameraControl_Flags_Manual);
-#endif
+                #endif
             }
         }
+#endif // Camera control (works!)
 
-        // Query the capture filter for the IAMVideoProcAmp interface.
+#if 0   // (Works) Query the capture filter for the IAMVideoProcAmp interface.
         IAMVideoProcAmp* pProcAmp = 0;
         hr = pDeviceFilter->QueryInterface(IID_IAMVideoProcAmp, (void**)&pProcAmp);
         if (FAILED(hr))
@@ -233,60 +246,77 @@ void myCamControl()
 
             // Get the range and default values 
             hr = pProcAmp->GetRange(VideoProcAmp_Brightness, &Min, &Max, &Step, &Default, &Flags);
-            hr = pProcAmp->GetRange(VideoProcAmp_BacklightCompensation, &Min, &Max, &Step, &Default, &Flags);
-            hr = pProcAmp->GetRange(VideoProcAmp_Contrast, &Min, &Max, &Step, &Default, &Flags);
-            hr = pProcAmp->GetRange(VideoProcAmp_Saturation, &Min, &Max, &Step, &Default, &Flags);
-            hr = pProcAmp->GetRange(VideoProcAmp_Sharpness, &Min, &Max, &Step, &Default, &Flags);
-            hr = pProcAmp->GetRange(VideoProcAmp_WhiteBalance, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pProcAmp->GetRange(VideoProcAmp_BacklightCompensation, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pProcAmp->GetRange(VideoProcAmp_Contrast, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pProcAmp->GetRange(VideoProcAmp_Saturation, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pProcAmp->GetRange(VideoProcAmp_Sharpness, &Min, &Max, &Step, &Default, &Flags);
+            //hr = pProcAmp->GetRange(VideoProcAmp_WhiteBalance, &Min, &Max, &Step, &Default, &Flags);
             if (SUCCEEDED(hr))
             {
-#if 1 // vv20210929 here we can get camera parameter (Video Prom Amp)
-                hr = pProcAmp->Get(VideoProcAmp_Brightness, &Val, &Flags);
-                std::cout << "Brightness value is: " << Val << " auto value" << Flags << "\r\n";
+                #if 1 // vv20210929 here we can get camera parameter (Video Prom Amp)
+                //hr = pProcAmp->Get(VideoProcAmp_Brightness, &Val, &Flags);
+                //std::cout << "Brightness value is: " << Val << " auto value" << Flags << "\r\n";
                 hr = pProcAmp->Get(VideoProcAmp_WhiteBalance, &Val, &Flags);
                 std::cout << "WhiteBalance value is: " << Val << " auto value" << Flags << "\r\n";
-#endif
+                #endif
 
 
-#if 0  // vv20210929 here we can set the camera parameter (Video Prom Amp)
+                #if 0  // vv20210929 here we can set the camera parameter (Video Prom Amp)
                 hr = pProcAmp->Set(VideoProcAmp_Brightness, 142, VideoProcAmp_Flags_Manual);
                 hr = pProcAmp->Set(VideoProcAmp_BacklightCompensation, 0, VideoProcAmp_Flags_Manual);
                 hr = pProcAmp->Set(VideoProcAmp_Contrast, 4, VideoProcAmp_Flags_Manual);
                 hr = pProcAmp->Set(VideoProcAmp_Saturation, 100, VideoProcAmp_Flags_Manual);
                 hr = pProcAmp->Set(VideoProcAmp_Sharpness, 0, VideoProcAmp_Flags_Manual);
                 hr = pProcAmp->Set(VideoProcAmp_WhiteBalance, 2800, VideoProcAmp_Flags_Manual);
-#endif
+                #endif
             }
         }
+#endif // Pro Amp control (works!) 
 
-
-        //============================================================
-        //=========== END MY CODE  ======================================
-        //=============================================================
-//#if 0
         // set FilterGraph
-        pCaptureGraphBuilder2->SetFiltergraph(pGraphBuilder);
+        hr = pCaptureGraphBuilder2->SetFiltergraph(pGraphBuilder);
+        if (!SUCCEEDED(hr))
+            MessageBox(NULL, L"SetFiltergraph failed!", L"Failed message", MB_OK);
 
         // get MediaControl interface
-        pGraphBuilder->QueryInterface(IID_IMediaControl,
-            (LPVOID*)&pMediaControl);
+        hr = pGraphBuilder->QueryInterface(IID_IMediaControl, (LPVOID*)&pMediaControl);
+        if (!SUCCEEDED(hr))
+            MessageBox(NULL, L"get MediaControl interface failed!", L"Failed message", MB_OK);
 
         // add device filter to FilterGraph
-        pGraphBuilder->AddFilter(pDeviceFilter, L"Device Filter");
+        hr = pGraphBuilder->AddFilter(pDeviceFilter, L"Device Filter");
+        if (!SUCCEEDED(hr))
+            MessageBox(NULL, L"AddFilter failed!", L"Failed message", MB_OK);
 
         // create Graph
-        pCaptureGraphBuilder2->RenderStream(&PIN_CATEGORY_CAPTURE,
-            NULL, pDeviceFilter, NULL, NULL);
+        hr = pCaptureGraphBuilder2->RenderStream(&PIN_CATEGORY_CAPTURE, NULL, pDeviceFilter, NULL, NULL);
+        if (!SUCCEEDED(hr))
+            MessageBox(NULL, L"RenderStream failed!", L"Failed message", MB_OK);
+
+        //hr = pMediaControl->GetState(); // 這個不能拿來判斷是否被占用
 
         // start playing
-        pMediaControl->Run();
-
-        // to block execution
-        // without this messagebox, the graph will be stopped immediately
-        MessageBox(NULL,
-            L"Without this messagebox, the graph will be stopped immediately",
-            L"Block",
-            MB_OK);
+        //OAFilterState gg;
+        //hr = pMediaControl->GetState(0, &gg);
+        //UINT pctinfo; // 這看起來也不行
+        //hr = pMediaControl->GetTypeInfoCount(&pctinfo);
+        hr = pMediaControl->Run();
+        if (!SUCCEEDED(hr))
+        { // 會有小視窗閃一下
+            _com_error err(hr);
+            LPCTSTR errMsg = err.ErrorMessage();
+            //MessageBox(NULL, L"Run() failed!", L"Failed message", MB_OK);
+            std::cout << "Run failed!! The return code is:" << std::hex << hr << "\r\n";
+        }
+        else
+        {
+            // to block execution
+            // without this messagebox, the graph will be stopped immediately
+            MessageBox(NULL,
+                L"Without this messagebox, the graph will be stopped immediately",
+                L"Block",
+                MB_OK);
+        }
 
         // release
         pMediaControl->Release();
@@ -547,28 +577,56 @@ HRESULT selectDev()
 
     return hr;
 }
+#if 1
+bool occupiedDetect()
+{
+    #if 0 // (under testing...)
+    KSPROPERTY ksProp;
+    DWORD numPins;
+    DWORD bytesReturned;
+    ksProp.Set = KSPROPSETID_Pin;
+    ksProp.Id = KSPROPERTY_PIN_CTYPES;
+    ksProp.Flags = KSPROPERTY_TYPE_GET;
+
+    if (DeviceIoControl(devHandle, IOCTL_KS_PROPERTY, &ksProp, sizeof(ksProp), &numPins, sizeof(numPins), &bytesReturned, NULL)) {
+
+        KSP_PIN ksPin;
+        ksPin.Reserved = 0;
+        ksPin.Property.Set = KSPROPSETID_Pin;
+        ksPin.Property.Id = KSPROPERTY_PIN_CINSTANCES;
+        ksPin.Property.Flags = KSPROPERTY_TYPE_GET;
+
+        for (DWORD pin = 0; pin < numPins; ++pin) {
+
+            KSPIN_CINSTANCES pinInstance;
+            ksPin.PinId = pin;
+
+            if (DeviceIoControl(devHandle, IOCTL_KS_PROPERTY, &ksPin, sizeof(ksPin), &pinInstance, sizeof(pinInstance), &bytesReturned, NULL)) {
+                printf("Pin %d Possible: %d Current: %d\n", pin, pinInstance.PossibleCount, pinInstance.CurrentCount);
+            }
+        }
+    }
+    #endif
+
+    return true;
+}
+#endif
 
 int main()
 {
     std::cout << "Start trying read my camera parameters!!\n";
+
+    // get if a specied cam is occupied
+    //getCamOccupied();
+
+#if 1 // works! Pro Amps and Camera control adjust!
     myCamControl();
- 
+#endif
 
-    //unsigned __int64 now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    //std::cout << now << std::endl;
-
-    //using namespace std::chrono;
-    //std::cout << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() << std::endl;
-
-    //using namespace std::chrono;
-    //milliseconds ms = duration_cast<milliseconds>(
-    //    system_clock::now().time_since_epoch()
-    //    );
-
-
-#if 0 // Get serial number
+#if 1 // Get serial number
     std::vector<int>* order = new std::vector<int>(10, -1);
     getCameraOrderBySerialNumber(order, 1);
+    
 #endif
 
 #if 0 // get serial number test (不可用)
@@ -620,14 +678,3 @@ int main()
     }
 #endif
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file

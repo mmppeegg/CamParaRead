@@ -140,7 +140,6 @@ static int getSerialNumber(std::string childDistanceId)
 	return 0;
 }
 
-
 bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 {
 	int numOfFoundedCamera = 0;
@@ -156,7 +155,8 @@ bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 	ICreateDevEnum* pSysDevEnum = NULL;
 	hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_ICreateDevEnum, (void**)&pSysDevEnum);
 	if (FAILED(hr)) {
-		return hr;
+		//return hr;
+		return false;
 	}
 
 	IEnumMoniker* pEnumCat = NULL;
@@ -281,4 +281,128 @@ bool getCameraOrderBySerialNumber(std::vector<int>* order, int numOfCamera)
 	{
 		return false;
 	}
+}
+
+bool getCamOccupied()
+{
+	int numOfFoundedCamera = 0;
+	USES_CONVERSION;
+	// Init COM
+	HRESULT hr = NULL;
+	hr = CoInitialize(NULL);
+	if (FAILED(hr)) {
+		printf("Error, Can not init COM.");
+		return false;
+	}
+	//	printf("===============Directshow Filters ===============\n");
+	ICreateDevEnum* pSysDevEnum = NULL;
+	hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_ICreateDevEnum, (void**)&pSysDevEnum);
+	if (FAILED(hr)) {
+		//return hr;
+		return false;
+	}
+
+	IEnumMoniker* pEnumCat = NULL;
+	HANDLE handleCam;
+	
+	hr = pSysDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pEnumCat, 0);
+
+	if (hr != S_OK) {
+		pSysDevEnum->Release();
+		return false;
+	}
+
+	// Obtain a class enumerator for the video input category.
+	IMoniker* pMoniker = NULL;
+	ULONG monikerFetched;
+	int deviceCounter = 0;
+	//Filter
+	while (pEnumCat->Next(1, &pMoniker, &monikerFetched) == S_OK)
+	{
+		IPropertyBag* pPropBag;
+		VARIANT varName;
+		IBaseFilter* pFilter = NULL;
+		hr = pMoniker->BindToStorage(0, 0, IID_IPropertyBag, (void**)&pPropBag);
+		if (FAILED(hr))
+		{
+			pMoniker->Release();
+			continue;
+		}
+		VariantInit(&varName);
+		//		hr = pPropBag->Read(L"FriendlyName", &varName, 0);
+		hr = pPropBag->Read(L"DevicePath", &varName, 0);
+
+		//Filter Info================
+		//修改格式使其和com產生的串格式對應
+		bool kgt_cam_found = false;
+		if (varName.bstrVal == NULL) { // Found nothing
+			//std::cout << "Not get any string!!! Next one please!! \r\n";
+			VariantClear(&varName);
+			continue;
+		}
+		std::string varNameBak = W2A(varName.bstrVal);
+		// Filter Kensington devices
+		if (varNameBak.find("vid_047d") != std::string::npos) {
+			if (varNameBak.find("pid_80b3") != std::string::npos || // W2000
+				(varNameBak.find("pid_80b4") != std::string::npos)   // W2050
+				)
+				std::cout << "Kensington cam: " << varNameBak << "\r\n";
+			kgt_cam_found = true;
+		}
+		if (!kgt_cam_found) continue;
+
+		// Here we do CreateFile
+		handleCam = CreateFileW(varName.bstrVal, GENERIC_READ | GENERIC_WRITE,
+			FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+		if (INVALID_HANDLE_VALUE != handleCam)
+		{
+			// Got
+			std::cout << "CreateFile success!! \r\n";
+			KSPROPERTY ksProp;
+			DWORD numPins;
+			DWORD bytesReturned;
+			ksProp.Set = KSPROPSETID_Pin;
+			ksProp.Id = KSPROPERTY_PIN_CTYPES;
+			ksProp.Flags = KSPROPERTY_TYPE_GET;
+
+			//KSPROPERTY_PIN_CTYPES
+			if (DeviceIoControl(handleCam, IOCTL_KS_PROPERTY, &ksProp, sizeof(ksProp), &numPins, sizeof(numPins), &bytesReturned, NULL)) {
+
+				KSP_PIN ksPin;
+				ksPin.Reserved = 0;
+				ksPin.Property.Set = KSPROPSETID_Pin;
+				ksPin.Property.Id = KSPROPERTY_PIN_CINSTANCES;
+				//ksPin.Property.Id = KSPROPERTY_PIN_GLOBALCINSTANCES; // 在做device-io-control會失敗啊
+				ksPin.Property.Flags = KSPROPERTY_TYPE_GET;
+
+				for (DWORD pin = 0; pin < numPins; ++pin) {
+
+					KSPIN_CINSTANCES pinInstance;
+					ksPin.PinId = pin;
+
+					if (DeviceIoControl(handleCam, IOCTL_KS_PROPERTY, &ksPin, sizeof(ksPin), &pinInstance, sizeof(pinInstance),
+						&bytesReturned, NULL))
+					{
+						printf("Pin %d Possible: %d Current: %d\n", pin, pinInstance.PossibleCount, pinInstance.CurrentCount);
+					}
+				}
+			}
+
+		}
+		else
+		{
+			std::cout << "CreateFile failed!! \r\n";
+		}
+		VariantClear(&varName);
+
+		pPropBag->Release();
+		pMoniker->Release();
+		deviceCounter++;
+	}
+	pEnumCat->Release();
+	pSysDevEnum->Release();
+	//printf("=================================================\n");
+	CoUninitialize();
+
+	return true;
 }
